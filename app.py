@@ -26,15 +26,20 @@ client = (
 @app.route("/api/test-gemini")
 def test_gemini():
     try:
-        result = client.interactions.create(
+        result = client.models.generate_content(
             model=MODEL_NAME,
-            input="Reply with only: Hello",
-            timeout=30
+            contents="Reply with only: Hello"
         )
-        return {"ok": True, "answer": result.output_text}
+        return {
+            "ok": True,
+            "answer": result.text
+        }
     except Exception as e:
         app.logger.exception("Gemini test failed")
-        return {"ok": False, "error": str(e)}, 502
+        return {
+            "ok": False,
+            "error": str(e)
+        }, 502
 
 def load_articles():
     path = BASE_DIR / "data" / "articles.json"
