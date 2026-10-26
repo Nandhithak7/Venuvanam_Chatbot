@@ -40,6 +40,28 @@ def test_gemini():
             "ok": False,
             "error": str(e)
         }, 502
+@app.route("/api/test-gemini-models")
+def test_gemini_models():
+    try:
+        models = client.models.list()
+        names = []
+
+        for model in models:
+            names.append(model.name)
+            if len(names) >= 5:
+                break
+
+        return {
+            "ok": True,
+            "models": names
+        }
+
+    except Exception as e:
+        app.logger.exception("Gemini model-list test failed")
+        return {
+            "ok": False,
+            "error": str(e)
+        }, 502
 
 def load_articles():
     path = BASE_DIR / "data" / "articles.json"
