@@ -16,7 +16,13 @@ app.config["MAX_CONTENT_LENGTH"] = 20 * 1024
 SITE_URL = os.getenv("SITE_URL", "https://venuvanam.com/")
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-client = genai.Client(api_key=API_KEY) if API_KEY else None
+client = (
+    genai.Client(
+        api_key=API_KEY,
+        http_options={"timeout": 20000}
+    )
+    if API_KEY else None
+)
 
 def load_articles():
     path = BASE_DIR / "data" / "articles.json"
@@ -136,57 +142,100 @@ def health():
     return jsonify({"ok": True, "ai_configured": bool(API_KEY), "model": MODEL_NAME, "articles_indexed": len(load_articles())})
 
 
+
 @app.post("/api/chat")
 def chat():
     payload = request.get_json(silent=True) or {}
     question = str(payload.get("message", "")).strip()
+
     if not question:
         return jsonify({"error": "Please enter a question."}), 400
+
     if len(question) > 4000:
-        return jsonify({"error": "Question is too long. Please keep it under 4000 characters."}), 400
+        return jsonify({"error": "Question is too long."}), 400
+
+    q = question.lower()
+
+    # Instant answers: no Gemini request needed
+    author_questions = [
+        "who is the author", "who wrote venuvanam",
+        "who is the writer", "author of venuvanam",
+        "வேணுவனத்தின் ஆசிரியர்", "வேணுவனத்தின் எழுத்தாளர்",
+        "ஆசிரியர் யார்", "எழுத்தாளர் யார்"
+    ]
+
+    about_questions = [
+        "what is venuvanam", "tell me about venuvanam",
+        "about venuvanam", "வேணுவனம் என்றால் என்ன",
+        "வேணுவனம் பற்றி"
+    ]
+
+    if any(term in q for term in author_questions):
+        return jsonify({
+            "answer": "Venuvanam is a Tamil writing website associated with author Suga (சுகா).",
+            "sources": [{
+                "title": "வேணுவனம் — சுகா",
+                "url": "https://venuvanam.com/"
+            }],
+            "mode": "local"
+        })
+
+    if any(term in q for term in about_questions):
+        return jsonify({
+            "answer": "Venuvanam (வேணுவனம்) is a Tamil writing website associated with writer Suga (சுகா). It features essays, personal experiences and tributes.",
+            "sources": [{
+                "title": "வேணுவனம் — சுகா",
+                "url": "https://venuvanam.com/"
+            }],
+            "mode": "local"
+        })
 
     articles = load_articles()
     relevant = retrieve_articles(question, articles, limit=3)
+
     sources = []
     seen = set()
+
     for item in relevant:
         url = item.get("url", "")
         if url and url not in seen:
             seen.add(url)
-            sources.append({"title": item.get("title", "Venuvanam article"), "url": url})
+            sources.append({
+                "title": item.get("title", "Venuvanam article"),
+                "url": url
+            })
 
-    if not API_KEY:
-        return jsonify({"answer": demo_answer(question, relevant), "sources": sources, "mode": "demo"})
+    if not client:
+        return jsonify({
+            "answer": demo_answer(question, relevant),
+            "sources": sources,
+            "mode": "demo"
+        })
 
     try:
-        import time
-
-        start = time.perf_counter()
-
         interaction = client.interactions.create(
-    model=MODEL_NAME,
-    input=make_prompt(question, relevant),
-    generation_config={"max_output_tokens": 200},
-    timeout=20000
-)
+            model=MODEL_NAME,
+            input=make_prompt(question, relevant),
+            generation_config={"max_output_tokens": 200}
+        )
 
-        api_time = time.perf_counter() - start
-        app.logger.info("Gemini response time: %.2f seconds", api_time)
-
-        answer = (getattr(interaction, "output_text", None) or "").strip()
+        answer = (
+            getattr(interaction, "output_text", None) or ""
+        ).strip()
 
         if not answer:
-            answer = "Sorry, I couldn't create an answer this time. Please try again."
+            answer = "Sorry, I couldn't generate an answer. Please try again."
 
         return jsonify({
             "answer": answer,
             "sources": sources,
             "mode": "ai"
         })
+
     except Exception:
         app.logger.exception("Gemini API request failed")
         return jsonify({
-            "error": "AI service request failed. Check the terminal for details."
+            "error": "Gemini request failed or timed out. Please try again."
         }), 502
 
 
