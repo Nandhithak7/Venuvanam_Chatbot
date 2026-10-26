@@ -23,6 +23,18 @@ client = (
     )
     if API_KEY else None
 )
+@app.route("/api/test-gemini")
+def test_gemini():
+    try:
+        result = client.interactions.create(
+            model=MODEL_NAME,
+            input="Reply with only: Hello",
+            timeout=30
+        )
+        return {"ok": True, "answer": result.output_text}
+    except Exception as e:
+        app.logger.exception("Gemini test failed")
+        return {"ok": False, "error": str(e)}, 502
 
 def load_articles():
     path = BASE_DIR / "data" / "articles.json"
