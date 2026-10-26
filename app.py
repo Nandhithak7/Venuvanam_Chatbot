@@ -104,7 +104,7 @@ def make_prompt(question, relevant):
             f"TITLE: {article.get('title', '')}\n"
             f"URL: {article.get('url', '')}\n"
             f"SUMMARY: {article.get('summary', '')}\n"
-            f"CONTENT: {article.get('content', '')[:1800]}"
+            f"CONTENT: {article.get('content', '')[:700]}"
         )
     context = "\n\n--- ARTICLE ---\n\n".join(context_blocks) or "No matching Venuvanam articles were found in the local index."
     return f"""You are Venuvanam AI, a helpful assistant for readers of the Tamil literary website {SITE_URL}.
@@ -166,7 +166,8 @@ def chat():
         interaction = client.interactions.create(
     model=MODEL_NAME,
     input=make_prompt(question, relevant),
-    generation_config={"max_output_tokens": 400}
+    generation_config={"max_output_tokens": 200},
+    timeout=20000
 )
 
         api_time = time.perf_counter() - start
