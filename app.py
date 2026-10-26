@@ -40,24 +40,22 @@ def test_gemini():
             "ok": False,
             "error": str(e)
         }, 502
+
 @app.route("/api/test-gemini-models")
 def test_gemini_models():
     try:
-        models = client.models.list()
-        names = []
-
-        for model in models:
-            names.append(model.name)
-            if len(names) >= 5:
-                break
+        result = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents="Reply with only: Hello"
+        )
 
         return {
             "ok": True,
-            "models": names
+            "answer": result.text
         }
 
     except Exception as e:
-        app.logger.exception("Gemini model-list test failed")
+        app.logger.exception("Gemini generation test failed")
         return {
             "ok": False,
             "error": str(e)
