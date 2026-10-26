@@ -52,7 +52,20 @@ async function sendMessage(text) {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({message})
     });
-    const data = await response.json();
+    const contentType = response.headers.get('content-type') || '';
+const raw = await response.text();
+
+let data;
+
+try {
+  data = JSON.parse(raw);
+} catch (error) {
+  console.error('API response:', raw);
+  throw new Error(
+    `Server JSON return pannala. HTTP ${response.status}. ` +
+    `Response: ${raw.slice(0, 150)}`
+  );
+}
     pending.remove();
     if (!response.ok) throw new Error(data.error || 'Request failed.');
     addMessage(data.answer || 'Sorry, I could not find an answer.', 'assistant', data.sources || []);
