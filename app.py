@@ -429,17 +429,14 @@ def chat():
             "mode": "ai"
         })
 
-    except Exception:
-        # Keep the website usable if the external AI API fails.
-        app.logger.exception(
-            "Gemini API request failed. Using local fallback."
-        )
+    except Exception as e:
+    app.logger.exception("Gemini API request failed")
 
-        return jsonify({
-            "answer": demo_answer(question, relevant),
-            "sources": sources,
-            "mode": "fallback"
-        })
+    return jsonify({
+        "answer": f"Gemini error: {type(e).__name__}: {str(e)}",
+        "sources": sources,
+        "mode": "error"
+    }), 502
 
 
 # --------------------------------------------------
