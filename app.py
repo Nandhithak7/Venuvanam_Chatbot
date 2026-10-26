@@ -214,10 +214,11 @@ def chat():
 
     try:
         interaction = client.interactions.create(
-            model=MODEL_NAME,
-            input=make_prompt(question, relevant),
-            generation_config={"max_output_tokens": 200}
-        )
+    model=MODEL_NAME,
+    input=make_prompt(question, relevant),
+    generation_config={"max_output_tokens": 200},
+    timeout=60
+)
 
         answer = (
             getattr(interaction, "output_text", None) or ""
