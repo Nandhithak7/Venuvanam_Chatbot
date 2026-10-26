@@ -33,6 +33,38 @@ def words(text):
 
 def retrieve_articles(question, articles, limit=5):
     query_words = words(question)
+    q = question.lower()
+
+    # Handle common questions about Venuvanam and its author
+    author_terms = [
+        "author", "who wrote", "writer", "founder",
+        "யார் எழுதியது", "ஆசிரியர்", "எழுத்தாளர்",
+        "யாருடையது", "யார்"
+    ]
+    about_terms = [
+        "what is venuvanam", "about venuvanam",
+        "tell me about venuvanam", "வேணுவனம் என்றால் என்ன",
+        "வேணுவனம் பற்றி", "வேணுவனம்"
+    ]
+
+    if any(term in q for term in author_terms):
+        author_articles = [
+            article for article in articles
+            if "author" in " ".join(article.get("tags", [])).lower()
+            or "author name" in article.get("content", "").lower()
+        ]
+        if author_articles:
+            return author_articles[:limit]
+
+    if any(term in q for term in about_terms):
+        about_articles = [
+            article for article in articles
+            if "website" in article.get("tags", [])
+            or "about" in article.get("tags", [])
+        ]
+        if about_articles:
+            return about_articles[:limit]
+
     scored = []
     for article in articles:
         title = article.get("title", "")
@@ -43,6 +75,7 @@ def retrieve_articles(question, articles, limit=5):
         overlap = len(query_words & article_words)
         if overlap:
             scored.append((overlap, article))
+
     scored.sort(key=lambda item: item[0], reverse=True)
     return [item[1] for item in scored[:limit]]
 
